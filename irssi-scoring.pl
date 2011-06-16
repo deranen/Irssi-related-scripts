@@ -78,9 +78,7 @@ sub line_timer {
 	my ($server, $msg, $nick, $address, $target) = @_ ;
 	@splitfitt = split(/ /, $msg);
 	
-		Irssi::print("PUBLIC");
 		if ($nick eq "zguL" || $nick eq "zguL~") {
-			Irssi::print($splitfitt[0]);
 			if ($splitfitt[0] eq "TEST") {
 				Irssi::signal_emit("scoring", ("POPUP\n"));
 			}

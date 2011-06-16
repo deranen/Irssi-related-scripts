@@ -5,6 +5,8 @@ use strict;
 use IO::Socket;
 use Time::HiRes "time";
 
+$| = 1;
+
 my $server  = 'albin.abo.fi';
 my $port    = '5000';
 my $timeout = 2;
@@ -29,9 +31,7 @@ if (doHandshake())
 				do { $recv = <$socket>; } while (not defined($recv));
 			alarm(0);
 		};
-		if ($@) {
-			next;
-		}
+		if ($@) { next; }
 	
 		chomp($recv);
 		
@@ -45,18 +45,18 @@ if (doHandshake())
 		elsif ($command eq "POPUP")
 		{
 			my $t0 = time;
-			system("osascript", "irssi-popup.scpt", ">", "/dev/null");
+			system("osascript", "irssi-popup.scpt", ">", "/dev/null", "2>&1");
 			my $elapsed = (time - $t0) * 1000;
-			print("Osascript execution time: ", $elapsed, " milliseconds.");
+#			print("Osascript execution time: ", $elapsed, " milliseconds.");
 		}
 		elsif ($command eq "ALPHA")
 		{
 			if ($args)
 			{
-			
+				print $socket "This is an answer from Wolfram Alpha!\n";
 			}
 			else {
-				
+				print $socket "Args undefined!\n";
 			}
 		}
 		elsif ($command eq "SHUTDOWN")

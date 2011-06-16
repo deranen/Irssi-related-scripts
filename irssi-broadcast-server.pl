@@ -7,6 +7,8 @@ use Irssi;
 use Irssi::TextUI;
 use Time::HiRes "time";
 
+$| = 1;
+
 my $server = 'albin.abo.fi';
 my $port   = '5000';
 my $pingTime = 1000; # ms
@@ -99,7 +101,7 @@ sub sendCommand {
 	if(connectionOpen) {
 		print $client_socket $command;
 		chomp($command);
-		Irssi::print("Command \"$command\" broadcasted to $server.");
+		Irssi::print("Command \"$command\" broadcasted to client.");
 		return 1;
 	}
 	else {
@@ -110,13 +112,15 @@ sub sendCommand {
 }
 
 sub sendReceiveCommand {
-	my ($command, $resp, $respSignal, $ID) = ('', '', '', '');
-	$command = shift;
+	my ($command, $respSignal, $ID) = @_;
+	my $resp = '';
+	
 	if (sendCommand($command))
 	{
 		$resp = <$client_socket>;
-		if ($resp && ($respSignal = shift) && ($ID = shift)) {
+		if ($resp && $respSignal && $ID) {
 			Irssi::signal_emit($respSignal, ($resp, $ID));
+			chomp($resp);
 			Irssi::print("Response \"$resp\" sent back with signal \"$respSignal\".");
 			return 1;
 		} else {
@@ -144,3 +148,4 @@ sub UNLOAD {
 #################
 
 Irssi::signal_add("scoring", \&sendCommand);
+Irssi::signal_add("alphaSend", \&sendReceiveCommand);
