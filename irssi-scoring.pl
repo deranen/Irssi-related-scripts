@@ -69,11 +69,24 @@ my $result = "UNKNOWN";
 my $timeout_tag = 0;
 my $inputline = "";
 
+sub redirect {
+	my ($server, $msg, $target) = @_;
+	line_timer($server, $msg, $server->{nick}, undef, $target);
+}
+
 sub line_timer {
 	my ($server, $msg, $nick, $address, $target) = @_ ;
 	@splitfitt = split(/ /, $msg);
 	
-	# received line from machine
+		Irssi::print("PUBLIC");
+		if ($nick eq "zguL" || $nick eq "zguL~") {
+			Irssi::print($splitfitt[0]);
+			if ($splitfitt[0] eq "TEST") {
+				Irssi::signal_emit("scoring", ("POPUP\n"));
+			}
+		}
+	
+		# received line from machine
         if ($nick eq "MACHINE[]") {
 			# machine second scoring line
 			if (($target eq "#ranks") && ($second_scoring_line)) {
@@ -265,6 +278,7 @@ Irssi::settings_add_int('irssi_mm', 'ranks_hyper_hilight_beep_interval', 1000);
 Irssi::settings_add_bool('irssi_mm', 'ranks_mirggi_hilight', 0);
 Irssi::settings_add_str('irssi_mm', 'ranks_mirggi_nick', '');
 Irssi::signal_add('message public', 'line_timer');
+Irssi::signal_add('message own_public', 'redirect');
 Irssi::signal_add('message own_private', 'send_answer');
 Irssi::signal_add('send text', 'redirect_machine');
 Irssi::signal_add('message private', 'handle_private');

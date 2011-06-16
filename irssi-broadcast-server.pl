@@ -9,7 +9,7 @@ use Time::HiRes "time";
 
 my $server = 'albin.abo.fi';
 my $port   = '5000';
-my $pingTime = 1000;
+my $pingTime = 1000; # ms
 
 use vars qw($VERSION %IRSSI);
 
@@ -31,7 +31,7 @@ my $client_socket = 0;
 my $socket = new IO::Socket::INET (
                                   LocalHost => $server,
                                   LocalPort => $port,
-                                  Proto => 'tcp',
+           	                       Proto => 'tcp',
                                   Listen => 5,
                                   Reuse => 1,
                                   Blocking => 0,
@@ -50,7 +50,7 @@ Irssi::timeout_add($pingTime, \&maintainConnection, undef);
 ########
 
 sub connectionOpen {
-	return ($client_socket and defined($client_socket));
+	return (defined($client_socket) && $client_socket);
 }
 
 sub maintainConnection {
@@ -70,10 +70,9 @@ sub establishConnection {
 	
 	if (defined($client_socket))
 	{
-		Irssi::print("Connection established with " . $client_socket->sockhost() . " !");
+		Irssi::print("Connection established with " . $client_socket->sockhost() . "!");
 		if (doHandshake())
 		{
-			Irssi::print("Handshake successful!");
 			Irssi::print("Listening for Irssi signals...");
 			return 1;
 		}
@@ -83,9 +82,9 @@ sub establishConnection {
  
 sub doHandshake {
 	print $client_socket "PING\n";
-	my $response = '';
-	$response = <$client_socket>;
-	if ("$response" eq "PONG\n") {
+	my $recv = '';
+	$recv = <$client_socket>;
+	if (defined($recv) && $recv eq "PONG\n") {
 		return 1;
 	} else {
 		Irssi::print("No handshake response from other end. Closing client socket.");
@@ -96,14 +95,36 @@ sub doHandshake {
 }
 
 sub sendCommand {
-	my $command = '';
-	$command = shift;
+	my $command = shift;
 	if(connectionOpen) {
 		print $client_socket $command;
+		chomp($command);
+		Irssi::print("Command \"$command\" broadcasted to $server.");
+		return 1;
 	}
 	else {
 		chomp($command);
 		Irssi::print("Command \"$command\" not broadcasted because no connection has been established.");
+		return 0;
+	}
+}
+
+sub sendReceiveCommand {
+	my ($command, $resp, $respSignal, $ID) = ('', '', '', '');
+	$command = shift;
+	if (sendCommand($command))
+	{
+		$resp = <$client_socket>;
+		if ($resp && ($respSignal = shift) && ($ID = shift)) {
+			Irssi::signal_emit($respSignal, ($resp, $ID));
+			Irssi::print("Response \"$resp\" sent back with signal \"$respSignal\".");
+			return 1;
+		} else {
+			Irssi::print("No response from other end. Closing client socket.");
+			close($client_socket);
+			$client_socket = 0;
+			return 0;
+		}
 	}
 }
  

@@ -3,6 +3,7 @@
 use warnings;
 use strict;
 use IO::Socket;
+use Time::HiRes "time";
 
 my $server  = 'albin.abo.fi';
 my $port    = '5000';
@@ -25,7 +26,7 @@ if (doHandshake())
 		eval {
 			local $SIG{ALRM} = \&reestablishConnection;
 			alarm($timeout);
-				$recv = <$socket>;
+				do { $recv = <$socket>; } while (not defined($recv));
 			alarm(0);
 		};
 		if ($@) {
@@ -34,23 +35,35 @@ if (doHandshake())
 	
 		chomp($recv);
 		
-		if ($recv eq "PING")
+		my ($command, $args) = ('', '');
+		($command, $args) = split(/ /, $recv, 2);
+		
+		if ($command eq "PING")
 		{
 			print $socket "PONG\n";
 		}
-		elsif ($recv eq "POPUP")
+		elsif ($command eq "POPUP")
 		{
-			system("osascript irssi-popup.scpt");
+			my $t0 = time;
+			system("osascript", "irssi-popup.scpt", ">", "/dev/null");
+			my $elapsed = (time - $t0) * 1000;
+			print("Osascript execution time: ", $elapsed, " milliseconds.");
 		}
-		elsif ($recv eq "SHUTDOWN")
+		elsif ($command eq "ALPHA")
+		{
+			if ($args)
+			{
+			
+			}
+			else {
+				
+			}
+		}
+		elsif ($command eq "SHUTDOWN")
 		{
 			eval {
 				reestablishConnection();
 			};
-		}
-		elsif (eof($recv))
-		{
-			print "Received EOF!\n";
 		}
 		else
 		{
@@ -81,10 +94,11 @@ sub createSocket {
 
 sub doHandshake {
 	my $recv = '';
-	$recv = <$socket>;
+	do { $recv = <$socket>; } while (not defined($recv));
+	
 	chomp($recv);
 	
-	if ("$recv" eq "PING") {
+	if ($recv eq "PING") {
 		print $socket "PONG\n";
 		return 1;
 	}
