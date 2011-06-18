@@ -58,6 +58,7 @@ $VERSION = '1.09';
     license     => 'Public Domain',
 );
 
+$| = 1;
 
 my $second_line = [gettimeofday];
 my $first_line = [gettimeofday];

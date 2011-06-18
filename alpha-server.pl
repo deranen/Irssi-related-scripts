@@ -14,6 +14,8 @@ $VERSION = '1.00';
     license     => 'Public Domain',
 );
 
+$| = 1;
+
 my %argHash = ();
 my $ID = 0;
 
@@ -24,23 +26,21 @@ sub redirBroadcastSend {
 
 sub broadcastSend {
 	my @args = @_;
-	my $msg = $args[1];
+	my ($server, $msg, $target) = ($args[0], $args[1], $args[4])
 	
 	chomp($msg);
 	if( $msg =~ /^!wa\s*$/ ) {
-		Irssi::print("Usage: !wa <query>");
+		$server->command("/MSG $target Usage: !wa <query>");
 	}
 	elsif( $msg =~ /^!wa\s(.+)/ ) {
-		$argHash{$ID+=1} = @args;
+		$argHash{$ID+=1} = \@args;
 		Irssi::signal_emit("alphaSend", ("ALPHA $1\n", "alphaReceive", $ID));
 	}
 }
 
 sub broadcastReceive {
-	Irssi::print("Now in alpha-server-broadcastReceive");
 	my ($result, $ID) = @_;
-	Irssi::print("result: $result\nID: $ID");
-	my @args = $argHash{$ID};
+	my @args = @{$argHash{$ID}};
 	my ($server, $target) = ($args[0], $args[4]);
 	$server->command("/MSG $target $result");
 	delete($argHash{$ID});

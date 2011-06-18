@@ -86,8 +86,8 @@ sub createSocket {
 			return;
 		}
 		else {
-			print "Couldn't create socket! Retrying in 10 seconds...\n";
-			sleep(10);
+			print "Couldn't create socket! Retrying in 5 seconds...\n";
+			sleep(5);
 		}
 	}
 }
