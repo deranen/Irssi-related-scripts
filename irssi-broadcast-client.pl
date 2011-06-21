@@ -53,7 +53,8 @@ if (doHandshake())
 		{
 			if ($args)
 			{
-				print $socket "This is an answer from Wolfram Alpha!\n";
+				my $ans = `perl alpha-client.pl \'$args\'`;
+				print $socket "alphaReceive " . $ans;
 			}
 			else {
 				print $socket "Args undefined!\n";

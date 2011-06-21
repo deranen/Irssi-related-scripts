@@ -11,7 +11,9 @@ $| = 1;
 
 my $server = 'albin.abo.fi';
 my $port   = '5000';
+my $ping   = 0;
 my $pingTime = 1000; # ms
+my $socketReadTime = 25; # ms
 
 use vars qw($VERSION %IRSSI);
 
@@ -46,6 +48,7 @@ $SIG{TERM} = \&UNLOAD;
 Irssi::print("Waiting for incoming connections...");
 establishConnection();
 Irssi::timeout_add($pingTime, \&maintainConnection, undef);
+Irssi::timeout_add($socketReadTime, \&receiveCommand, undef);
 
 ########
 # SUBS #
@@ -56,14 +59,11 @@ sub connectionOpen {
 }
 
 sub maintainConnection {
-	if ( not connectionOpen() ) {
+	if (not connectionOpen()) {
 		establishConnection();
 	}
 	else {
-		my $t0 = time;
 		doHandshake();
-		my $elapsed = (time - $t0) * 1000;
-#		Irssi::print("Ping time: " . $elapsed . " milliseconds.");
 	}
 }
 
@@ -73,26 +73,22 @@ sub establishConnection {
 	if (defined($client_socket))
 	{
 		Irssi::print("Connection established with " . $client_socket->sockhost() . "!");
-		if (doHandshake())
-		{
-			Irssi::print("Listening for Irssi signals...");
-			return 1;
-		}
+		doHandshake();
+		Irssi::print("Listening for Irssi signals...");
+		return 1;
 	}
 	return 0;
 }
  
 sub doHandshake {
 	print $client_socket "PING\n";
-	my $recv = '';
-	$recv = <$client_socket>;
-	if (defined($recv) && $recv eq "PONG\n") {
-		return 1;
-	} else {
-		Irssi::print("No handshake response from other end. Closing client socket.");
-		close($client_socket);
-		$client_socket = 0;
-		return 0;
+	$ping = time;
+}
+
+sub handleHandshakeResponse {
+	my $elapsed = (time - $ping) * 1000;
+	if($elapsed > 100) {
+#		Irssi::print("Ping time: " . $elapsed . "ms.");
 	}
 }
 
@@ -101,7 +97,7 @@ sub sendCommand {
 	if(connectionOpen) {
 		print $client_socket $command;
 		chomp($command);
-		Irssi::print("Command \"$command\" broadcasted to client.");
+#		Irssi::print("Command \"$command\" broadcasted to client.");
 		return 1;
 	}
 	else {
@@ -111,22 +107,43 @@ sub sendCommand {
 	}
 }
 
-sub sendReceiveCommand {
-	my ($command, $respSignal, $ID) = @_;
-	my $resp = '';
-	
-	if (sendCommand($command))
-	{
+sub receiveCommand {
+	if(socketContainsData()) {
+		my $resp = '';
 		$resp = <$client_socket>;
-		if ($resp && $respSignal && $ID) {
-			Irssi::signal_emit($respSignal, ($resp, $ID));
-			chomp($resp);
-			Irssi::print("Response \"$resp\" sent back with signal \"$respSignal\".");
-			return 1;
+		if (defined($resp)) {
+			if($resp eq "\n") {
+				return 0;
+			}
+			if($resp eq "PONG\n") {
+				handleHandshakeResponse();
+				return 1;
+			}
+			else {
+#				Irssi::print($resp);
+				my ($respSignal, $ans) = split(/ /, $resp, 2);
+				Irssi::signal_emit($respSignal, ($ans));
+				return 1;
+			}
 		} else {
-			Irssi::print("No response from other end. Closing client socket.");
+			Irssi::print("Socket contained data, but \$resp is undefined. Closing socket.");
 			close($client_socket);
 			$client_socket = 0;
+			return 0;
+		}
+	}
+}
+
+sub socketContainsData {
+	# Doing non-blocking read to check if there is data in socket
+	# http://www.perlmonks.org/?node_id=55241
+	if($client_socket) {
+		my $rfd = '';
+		vec ($rfd, fileno($client_socket), 1) = 1;
+		if (select ($rfd, undef, undef, 0) >= 0 && vec($rfd, fileno($client_socket), 1))
+		{
+			return 1;
+		} else {
 			return 0;
 		}
 	}
@@ -148,4 +165,4 @@ sub UNLOAD {
 #################
 
 Irssi::signal_add("scoring", \&sendCommand);
-Irssi::signal_add("alphaSend", \&sendReceiveCommand);
+Irssi::signal_add("alphaSend", \&sendCommand);

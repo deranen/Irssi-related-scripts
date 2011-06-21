@@ -9,15 +9,14 @@ $VERSION = '1.00';
 %IRSSI = (
     authors     => 'David Eränen',
     contact     => 'davideranen@hotmail.com',
-    name        => 'My First Perl script :-D',
-    description => 'Easily prints a link to WolframAlpha with given search input',
+    name        => 'alpha-server.pl',
+    description => '',
     license     => 'Public Domain',
 );
 
 $| = 1;
 
-my %argHash = ();
-my $ID = 0;
+my @argQueue = ();
 
 sub redirBroadcastSend {
 	my ($server, $msg, $target) = @_;
@@ -26,30 +25,29 @@ sub redirBroadcastSend {
 
 sub broadcastSend {
 	my @args = @_;
-	my ($server, $msg, $target) = ($args[0], $args[1], $args[4])
+	my ($server, $msg, $target) = ($args[0], $args[1], $args[4]);
 	
 	chomp($msg);
 	if( $msg =~ /^!wa\s*$/ ) {
 		$server->command("/MSG $target Usage: !wa <query>");
 	}
 	elsif( $msg =~ /^!wa\s(.+)/ ) {
-		$argHash{$ID+=1} = \@args;
-		Irssi::signal_emit("alphaSend", ("ALPHA $1\n", "alphaReceive", $ID));
+		unshift (@argQueue, \@args);
+		Irssi::signal_emit("alphaSend", ("ALPHA $1\n"));
 	}
 }
 
 sub broadcastReceive {
-	my ($result, $ID) = @_;
-	my @args = @{$argHash{$ID}};
-	my ($server, $target) = ($args[0], $args[4]);
-	$server->command("/MSG $target $result");
-	delete($argHash{$ID});
+	my ($result) = @_;
+	my @args = @{pop(@argQueue)};
+	my ($server, $nick, $target) = ($args[0], $args[2], $args[4]);
+	$server->command("/MSG $target <WolframAlpha> $nick: $result");
 }
 
-my $signal_config_hash = { "alphaSend" => [ "string", "string", "int"] };
+my $signal_config_hash = { "alphaSend" => [ "string" ] };
 Irssi::signal_register($signal_config_hash);
 
-my $signal_config_hash = { "alphaReceive" => [ "string", "int" ] };
+my $signal_config_hash = { "alphaReceive" => [ "string" ] };
 Irssi::signal_register($signal_config_hash);
 
 Irssi::signal_add('message public', 'broadcastSend');
