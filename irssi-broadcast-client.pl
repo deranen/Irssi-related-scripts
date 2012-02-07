@@ -51,14 +51,15 @@ if (doHandshake())
 		}
 		elsif ($command eq "ALPHA")
 		{
-			if ($args)
+			if (defined($args) and !($args eq ''))
 			{
 				my $ans = `perl alpha-client.pl \'$args\'`;
 				print $socket "alphaReceive " . $ans;
 			}
-			else {
-				print $socket "Args undefined!\n";
-			}
+		}
+		elsif ($command eq "GROWL") {
+			my ($nick, $msg) = split(/ /, $args, 2);
+			system("growlnotify", "-m", "<$nick> $msg", "-t", "Irssi");
 		}
 		elsif ($command eq "SHUTDOWN")
 		{
@@ -68,7 +69,7 @@ if (doHandshake())
 		}
 		else
 		{
-			print "Received unknown command: $recv\n";
+			print "Received unknown command: $command\n";
 		}
 	}
 }

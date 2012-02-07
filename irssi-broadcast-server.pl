@@ -97,7 +97,6 @@ sub sendCommand {
 	if(connectionOpen) {
 		print $client_socket $command;
 		chomp($command);
-#		Irssi::print("Command \"$command\" broadcasted to client.");
 		return 1;
 	}
 	else {
@@ -111,10 +110,7 @@ sub receiveCommand {
 	if(socketContainsData()) {
 		my $resp = '';
 		$resp = <$client_socket>;
-		if (defined($resp)) {
-			if($resp eq "\n") {
-				return 0;
-			}
+		if (defined($resp) and !($resp eq '')) {
 			if($resp eq "PONG\n") {
 				handleHandshakeResponse();
 				return 1;
@@ -166,3 +162,4 @@ sub UNLOAD {
 
 Irssi::signal_add("scoring", \&sendCommand);
 Irssi::signal_add("alphaSend", \&sendCommand);
+Irssi::signal_add("growlNotify", \&sendCommand);
